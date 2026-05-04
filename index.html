@@ -313,7 +313,13 @@ function captureScreen(){
     <div class="member-card">
       <div class="member-row">
         <label class="member-label">소속</label>
-        <input class="member-input" type="text" id="member-unit" placeholder="소속 부서 입력">
+        <select class="member-input member-select" id="member-unit">
+          <option value="">소속 선택</option>
+          <option value="청문인권담당관">청문인권담당관</option>
+          <option value="소방행정과">소방행정과</option>
+          <option value="화재예방과">화재예방과</option>
+          <option value="재난대응과">재난대응과</option>
+        </select>
       </div>
       <div class="member-row">
         <label class="member-label">계급</label>
@@ -502,7 +508,7 @@ function captureScreen(){
           <span class="rv-time-val" id="rv-time-general">--:--</span>
         </div>
         <div class="rv-time-row">
-          <span class="rv-time-label">🏁 활동 종료 시각</span>
+          <span class="rv-time-label" id="rv-end-label">🏁 활동 종료 시각</span>
           <span class="rv-time-val" id="rv-active-duration">--</span>
         </div>
         <div class="rv-time-row">
@@ -716,6 +722,16 @@ function buildDepartItems(){
   });
 }
 
+function updateDepartParent(){
+  var parentEl = document.getElementById('depart-parent');
+  var parentCircle = document.getElementById('depart-parent-circle');
+  var parentTick = document.getElementById('depart-parent-tick');
+  var allChecked = (departChecked.size === SUP_ITEMS.length && SUP_ITEMS.length > 0);
+  if(parentEl) allChecked ? parentEl.classList.add('checked') : parentEl.classList.remove('checked');
+  if(parentCircle) parentCircle.style.cssText = allChecked ? 'background:var(--green);border-color:var(--green)' : '';
+  if(parentTick) parentTick.style.opacity = allChecked ? '1' : '0';
+}
+
 function toggleDepart(idx){
   if(departChecked.has(idx)){
     departChecked.delete(idx);
@@ -724,20 +740,16 @@ function toggleDepart(idx){
   }
   var el = document.querySelector('[data-di="' + idx + '"]');
   if(el) el.classList.toggle('checked', departChecked.has(idx));
-  // 부모 자동 체크
+  // 부모 자동 체크/해제
   var parentEl = document.getElementById('depart-parent');
   var parentCircle = document.getElementById('depart-parent-circle');
   var parentTick = document.getElementById('depart-parent-tick');
-  if(departChecked.size === SUP_ITEMS.length){
-    if(parentEl) parentEl.classList.add('checked');
-    if(parentCircle) parentCircle.style.cssText = 'background:var(--green);border-color:var(--green)';
-    if(parentTick) parentTick.style.opacity = '1';
-  } else {
-    if(parentEl) parentEl.classList.remove('checked');
-    if(parentCircle) parentCircle.style.cssText = '';
-    if(parentTick) parentTick.style.opacity = '0';
-  }
+  var allChecked = (departChecked.size === SUP_ITEMS.length);
+  if(parentEl) allChecked ? parentEl.classList.add('checked') : parentEl.classList.remove('checked');
+  if(parentCircle) parentCircle.style.cssText = allChecked ? 'background:var(--green);border-color:var(--green)' : '';
+  if(parentTick) parentTick.style.opacity = allChecked ? '1' : '0';
   updateSelectBtn();
+  saveState();
 }
 
 function toggleDepartParent(){
@@ -768,7 +780,7 @@ function toggleDepartCard(){
   var arrow = document.getElementById('depart-arrow');
   if(wrap) wrap.style.display = departCardOpen ? 'block' : 'none';
   if(arrow) arrow.textContent = departCardOpen ? '∨' : '›';
-  if(departCardOpen) buildDepartItems();
+  if(departCardOpen){ buildDepartItems(); setTimeout(updateDepartParent, 0); }
 }
 
 // 현장 출동 전 종료
@@ -805,6 +817,7 @@ function toggleEarlyEnd(){
     disableActivityEnd();
   }
   updateSelectBtn();
+  saveState();
 }
 
 function disableActivityEnd(){
@@ -854,9 +867,9 @@ function updateSelectBtn(){
 }
 
 function completeFromSelect(){
+  currentRole = null;  // 요원 미선택 명시
   recordTime();
-  // 요원 선택 없이 완료 시 currentRole 처리
-  if(!currentRole) currentRole = 'none';
+  clearSavedState();
   showReview();
 }
 
@@ -871,31 +884,90 @@ function showScreen(id){
   document.querySelector('.app-header').style.display = (id === 'select') ? 'none' : 'flex';
   if(id === 'select'){
     buildDepartItems();
+    restoreSelectScreen();
     // 소속/계급/성명 입력 시 버튼 상태 갱신
     ['member-unit','member-rank','member-name'].forEach(function(fid){
       var el = document.getElementById(fid);
-      if(el){ el.oninput = updateSelectBtn; el.onchange = updateSelectBtn; }
+      if(el){ el.oninput = function(){ updateSelectBtn(); saveState(); }; el.onchange = function(){ updateSelectBtn(); saveState(); }; }
     });
     updateSelectBtn();
   }
 }
-function goBack(){ departChecked.clear(); reset(); showScreen('select'); }
-function showList(){ showScreen('list'); }
-function goSelectFromReview(){ departChecked.clear(); reset(); showScreen('select'); }
-function reset(){ checkedIds.clear(); completedTime = null; parentToSubs = {}; activityEndTime = null; withdrawalSids = []; earlyEndTime = null; departCardOpen=false; var dw=document.getElementById('depart-sub-wrap'); if(dw){ dw.style.display='none'; dw.style.pointerEvents=''; dw.style.opacity=''; } var da2=document.getElementById('depart-role-area'); if(da2) da2.classList.remove('disabled'); var da=document.getElementById('depart-arrow'); if(da) da.textContent='›'; var rc=document.getElementById('role-select-cards'); if(rc) rc.classList.remove('disabled'); var ee=document.getElementById('early-end-item'); if(ee) ee.classList.remove('checked'); var eet=document.getElementById('ee-time-out'); if(eet) eet.textContent='--:--'; }
+function goBack(){ saveState(); showScreen('select'); restoreSelectScreen(); }
+function showList(){
+  // 현장 출동 전 종료 결과화면(요원 미선택)에서는 첫 화면으로
+  if(earlyEndTime && !currentRole){
+    restoreSelectScreen();
+    showScreen('select');
+  } else {
+    showScreen('list');
+  }
+}
+function goSelectFromReview(){ clearSavedState(); departChecked.clear(); reset(); showScreen('select'); }
+function resetForRole(){
+  // 체크리스트 상태만 초기화 (대원정보·비상소집·출동단계 유지)
+  checkedIds.clear();
+  completedTime = null;
+  completedDate = null;
+  parentToSubs = {};
+  activityEndTime = null;
+  withdrawalSids = [];
+}
+
+function reset(){ checkedIds.clear(); completedTime = null; parentToSubs = {}; activityEndTime = null; withdrawalSids = []; earlyEndTime = null; departCardOpen=false; var dw=document.getElementById('depart-sub-wrap'); if(dw){ dw.style.display='none'; dw.style.pointerEvents=''; dw.style.opacity=''; } var da2=document.getElementById('depart-role-area'); if(da2) da2.classList.remove('disabled'); var da=document.getElementById('depart-arrow'); if(da) da.textContent='›';
+  // 출동단계 부모 체크 초기화
+  var dp=document.getElementById('depart-parent'); if(dp) dp.classList.remove('checked');
+  var dpc=document.getElementById('depart-parent-circle'); if(dpc) dpc.style.cssText='';
+  var dpt=document.getElementById('depart-parent-tick'); if(dpt) dpt.style.opacity='0'; var rc=document.getElementById('role-select-cards'); if(rc) rc.classList.remove('disabled'); var ee=document.getElementById('early-end-item'); if(ee) ee.classList.remove('checked'); var eet=document.getElementById('ee-time-out'); if(eet) eet.textContent='--:--';
+  // 비상소집 초기화
+  mobilizeTime = { essential: null, general: null };
+  ['essential','general'].forEach(function(type){
+    var chk = document.getElementById('mob-chk-' + type);
+    var out = document.getElementById('mob-time-' + type);
+    var item = document.getElementById('mob-item-' + type);
+    if(chk) chk.classList.remove('checked');
+    if(out) out.textContent = '--:--';
+    if(item) item.classList.remove('disabled');
+  });
+  // 대원정보 초기화
+  var unitEl = document.getElementById('member-unit');
+  if(unitEl) unitEl.value = '';
+  var rankEl = document.getElementById('member-rank');
+  if(rankEl) rankEl.value = '';
+  var nameEl = document.getElementById('member-name');
+  if(nameEl) nameEl.value = '';
+  // 임무완료 버튼 비활성화
+  var sbtn = document.getElementById('select-btn-complete');
+  if(sbtn){ sbtn.disabled=true; sbtn.classList.remove('active'); }
+  var sst = document.getElementById('select-action-status');
+  if(sst){ sst.textContent='소속·계급·성명 입력 후 활동 종료 또는 출동 전 종료 시 활성화'; sst.classList.remove('ready'); }
+  // rv-score 복구
+  var rvScore = document.getElementById('rv-score');
+  if(rvScore) rvScore.style.display = '';
+}
 
 // ══════════════════════════════════════════
 // SELECT ROLE
 // ══════════════════════════════════════════
 function selectRole(role){
+  var prevRole = currentRole;
   currentRole = role;
-  reset();
+  // 다른 요원으로 변경 시에만 체크 초기화
+  if(prevRole !== role){
+    checkedIds.clear();
+    completedTime = null;
+    completedDate = null;
+    parentToSubs = {};
+    activityEndTime = null;
+    withdrawalSids = [];
+  }
   var rd = ROLES[role];
   document.getElementById('role-title').textContent    = rd.name;
   document.getElementById('role-subtitle').textContent = rd.subtitle;
   document.getElementById('prog-fill').style.background = rd.barColor;
   buildChecklist(rd);
   showScreen('list');
+  restoreChecklist();
 }
 
 // ══════════════════════════════════════════
@@ -1034,6 +1106,7 @@ function toggleParent(pid, isWithdrawalParent){
     }
   }
   updateProgress();
+  saveState();
 }
 
 /* 세부항목 개별 클릭 */
@@ -1069,6 +1142,7 @@ function toggleSub(sid, pid, isWithdrawal){
     }
   }
   updateProgress();
+  saveState();
 }
 
 // ══════════════════════════════════════════
@@ -1112,6 +1186,7 @@ function updateProgress(){
 // ══════════════════════════════════════════
 function completeTask(){
   recordTime();
+  clearSavedState();
   showReview();
 }
 
@@ -1136,8 +1211,13 @@ function showReview(){
   var memberStr = [unit, rank, mname].filter(Boolean).join(' · ');
 
   // ── 현장 출동 전 종료: 간소화 화면
-  if(earlyEndTime && !currentRole){
-    document.getElementById('rv-role-name').textContent = '출동 전 종료 임무 완료 보고서';
+  // 현장 출동 전 종료 경로 (요원 미선택)
+  if(earlyEndTime && (!currentRole || currentRole === 'none')){
+    // ── 결과화면 1: 제목 '임무 완료 보고서'
+    document.getElementById('rv-role-name').textContent = '임무 완료 보고서';
+    // 활동 종료 시각 라벨 변경
+    var endLabel = document.getElementById('rv-end-label');
+    if(endLabel) endLabel.textContent = '🏁 활동 종료 시각(현장 출동 전 종료)';
     document.getElementById('rv-member-info').textContent = memberStr || '대원 정보 미입력';
     document.getElementById('rv-time').textContent  = completedTime;
     document.getElementById('rv-date').textContent  = completedDate;
@@ -1158,8 +1238,35 @@ function showReview(){
       document.getElementById('rv-elapsed').textContent = '정보 부족';
     }
 
-    // 하위 체크리스트 내역 숨김
-    document.getElementById('review-body').innerHTML = '';
+    // ── 2번째 박스: 출동단계 + 현장 출동 전 종료만 출력
+    var body0 = document.getElementById('review-body');
+    body0.innerHTML = '';
+
+    // 출동단계 카드
+    var dCard = document.createElement('div');
+    dCard.className = 'review-card';
+    var dH3 = document.createElement('h3');
+    dH3.textContent = '📍 출동단계';
+    dCard.appendChild(dH3);
+    var allDeptDone = (departChecked.size === SUP_ITEMS.length);
+    var dRow = document.createElement('div');
+    dRow.className = 'review-item';
+    dRow.innerHTML = '<div class="rv-dot '+(allDeptDone?'rv-done':'rv-miss')+'">'+(allDeptDone?'✓':'–')+'</div>'+
+      '<div class="'+(allDeptDone?'rv-text-done':'rv-text-miss')+'" style="font-weight:500">[지원준비] 지원 장비 준비</div>';
+    dCard.appendChild(dRow);
+    SUP_ITEMS.forEach(function(item, idx){
+      var done = departChecked.has(idx);
+      var sr = document.createElement('div');
+      sr.className = 'review-item';
+      sr.style.paddingLeft = '24px';
+      sr.innerHTML = '<div class="rv-dot '+(done?'rv-done':'rv-miss')+'" style="width:14px;height:14px;font-size:8px">'+(done?'✓':'–')+'</div>'+
+        '<div class="'+(done?'rv-text-done':'rv-text-miss')+'">'+item+'</div>';
+      dCard.appendChild(sr);
+    });
+    body0.appendChild(dCard);
+
+
+
     showScreen('review');
     sendToSheet();
     return;
@@ -1167,7 +1274,10 @@ function showReview(){
 
   // ── 일반 요원 선택 완료 화면
   document.getElementById('rv-score').style.display = '';
-  var rd = currentRole && ROLES[currentRole] ? ROLES[currentRole] : {name:'임무', phases:[]};
+  // 활동 종료 시각 라벨 원래대로 복원
+  var endLabel2 = document.getElementById('rv-end-label');
+  if(endLabel2) endLabel2.textContent = '🏁 활동 종료 시각';
+  var rd = ROLES[currentRole] || {name:'', phases:[]};
   document.getElementById('rv-role-name').textContent = rd.name + ' 임무 완료 보고서';
   document.getElementById('rv-member-info').textContent = memberStr || '대원 정보 미입력';
   document.getElementById('rv-time').textContent      = completedTime;
@@ -1353,6 +1463,166 @@ function captureScreen(){
     if(loading) loading.textContent = '❌ 캡처 실패. 다시 시도해주세요.';
   });
 }
+
+// ══════════════════════════════════════════
+// localStorage 자동저장 / 복원
+// ══════════════════════════════════════════
+var SAVE_KEY = 'guri_checklist_state';
+
+function saveState(){
+  try {
+    // checkedIds를 role별로 저장
+    var roleChecked = {};
+    if(currentRole){
+      roleChecked[currentRole] = Array.from(checkedIds);
+    }
+    // 기존 저장된 다른 role 체크 내용도 유지
+    try {
+      var prev = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+      if(prev.roleChecked){
+        Object.keys(prev.roleChecked).forEach(function(r){
+          if(r !== currentRole) roleChecked[r] = prev.roleChecked[r];
+        });
+      }
+    } catch(e2){}
+    var state = {
+      memberUnit:    (document.getElementById('member-unit')||{}).value || '',
+      memberRank:    (document.getElementById('member-rank') ? document.getElementById('member-rank').value : '') || '',
+      memberName:    (document.getElementById('member-name')||{}).value || '',
+      mobilizeTime:  mobilizeTime,
+      earlyEndTime:  earlyEndTime,
+      activityEndTime: activityEndTime,
+      departChecked: Array.from(departChecked),
+      checkedIds:    Array.from(checkedIds),
+      roleChecked:   roleChecked,
+      currentRole:   currentRole,
+      departCardOpen: departCardOpen,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+
+function loadState(){
+  try {
+    var raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function clearSavedState(){
+  try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+}
+
+function restoreSelectScreen(){
+  var state = loadState();
+  if(!state) return;
+
+  // 대원정보
+  var u = document.getElementById('member-unit');
+  if(u && state.memberUnit) u.value = state.memberUnit;
+  var r = document.getElementById('member-rank');
+  if(r && state.memberRank) r.value = state.memberRank;
+  var n = document.getElementById('member-name');
+  if(n && state.memberName) n.value = state.memberName;
+
+  // 비상소집
+  if(state.mobilizeTime){
+    mobilizeTime = state.mobilizeTime;
+    ['essential','general'].forEach(function(type){
+      if(mobilizeTime[type]){
+        var chk = document.getElementById('mob-chk-' + type);
+        var out = document.getElementById('mob-time-' + type);
+        var other = type==='essential'?'general':'essential';
+        var otherItem = document.getElementById('mob-item-' + other);
+        if(chk) chk.classList.add('checked');
+        if(out) out.textContent = mobilizeTime[type];
+        if(otherItem) otherItem.classList.add('disabled');
+      }
+    });
+  }
+
+  // 현장 출동 전 종료
+  if(state.earlyEndTime){
+    earlyEndTime = state.earlyEndTime;
+    activityEndTime = state.activityEndTime;
+    var ee = document.getElementById('early-end-item');
+    if(ee) ee.classList.add('checked');
+    var eet = document.getElementById('ee-time-out');
+    if(eet) eet.textContent = earlyEndTime;
+    // 출동단계·요원선택 비활성화
+    var da = document.getElementById('depart-role-area');
+    if(da) da.classList.add('disabled');
+    var rc = document.getElementById('role-select-cards');
+    if(rc) rc.classList.add('disabled');
+  }
+
+  // 출동단계
+  if(state.departChecked && state.departChecked.length > 0){
+    departChecked = new Set(state.departChecked.map(Number));
+    buildDepartItems();
+    // 부모 체크 상태 갱신
+    var parentEl = document.getElementById('depart-parent');
+    var parentCircle = document.getElementById('depart-parent-circle');
+    var parentTick = document.getElementById('depart-parent-tick');
+    var allDept = (departChecked.size === SUP_ITEMS.length);
+    if(parentEl) allDept ? parentEl.classList.add('checked') : parentEl.classList.remove('checked');
+    if(parentCircle) parentCircle.style.cssText = allDept ? 'background:var(--green);border-color:var(--green)' : '';
+    if(parentTick) parentTick.style.opacity = allDept ? '1' : '0';
+  }
+
+  // 임무완료 버튼 상태 갱신
+  updateSelectBtn();
+}
+
+function restoreChecklist(){
+  var state = loadState();
+  if(!state) return;
+
+  // 현재 role에 해당하는 checkedIds만 복원
+  var savedIds = [];
+  if(state.roleChecked && currentRole && state.roleChecked[currentRole]){
+    savedIds = state.roleChecked[currentRole];
+  } else if(state.currentRole === currentRole && state.checkedIds && state.checkedIds.length > 0){
+    // 이전 버전 호환
+    savedIds = state.checkedIds;
+  }
+
+  if(savedIds.length === 0) return;
+
+  checkedIds.clear();
+  savedIds.forEach(function(id){
+    checkedIds.add(id);
+    var el = document.querySelector('[data-id="'+id+'"]');
+    if(el) el.classList.add('checked');
+    // 인라인 스타일 제거 (CSS 클래스로만 처리되어야 toggleParent 해제가 정상 작동)
+    if(el && el.classList.contains('chk-item')){
+      var circle = el.querySelector('.chk-circle');
+      var tick = el.querySelector('.tick');
+      if(circle) circle.style.cssText = '';
+      if(tick) tick.style.opacity = '';
+    }
+  });
+
+  // 활동종료 복원
+  if(state.activityEndTime && !earlyEndTime){
+    activityEndTime = state.activityEndTime;
+    withdrawalSids.forEach(function(sid){
+      if(checkedIds.has(sid)){
+        var badge = document.getElementById('sub-end-'+sid);
+        if(badge) badge.innerHTML='<span class="end-label">활동 종료</span>'+activityEndTime;
+      }
+    });
+    withdrawalSids.forEach(function(pid){
+      if(checkedIds.has(pid)){
+        var badge2 = document.getElementById('sub-end-'+pid);
+        if(badge2) badge2.innerHTML='<span class="end-label">활동 종료</span>'+activityEndTime;
+      }
+    });
+  }
+  updateProgress();
+}
+
 </script>
 </body>
 </html>
