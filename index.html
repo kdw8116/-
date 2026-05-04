@@ -232,6 +232,9 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
 .time-sub{font-size:12px;color:var(--text-muted);margin-top:4px}
 .rv-score{font-size:14px;font-weight:600;margin-top:12px;padding:8px;background:#F8F9FA;border-radius:8px}
 .print-btn{width:100%;padding:14px;font-size:14px;font-weight:700;border:none;border-radius:12px;cursor:pointer;background:var(--red);color:white;font-family:inherit;margin-top:4px}
+.capture-btn{width:100%;padding:13px;font-size:14px;font-weight:700;border:1.5px solid var(--red);border-radius:12px;cursor:pointer;background:white;color:var(--red);font-family:inherit;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px}
+.capture-btn:active{background:#FEF5F4}
+.capture-loading{text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px;min-height:20px}
 .send-status{text-align:center;font-size:12px;font-weight:600;padding:8px 12px;border-radius:10px;margin-bottom:10px;min-height:36px;display:flex;align-items:center;justify-content:center}
 .send-status.sending{background:#EBF5FB;color:#1A5276}
 .send-status.ok{background:#D5F5E3;color:#1E8449}
@@ -245,6 +248,43 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
 .sub-end-time{font-size:11px;font-weight:700;color:#C0392B;white-space:nowrap;text-align:right;margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px}
 .end-label{font-size:9px;font-weight:700;color:#E74C3C;letter-spacing:0.3px;opacity:0.8}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+// ── 결과화면 캡처
+function captureScreen(){
+  var loading = document.getElementById('capture-loading');
+  if(loading) loading.textContent = '📸 캡처 중...';
+
+  var target = document.getElementById('screen-review');
+  var btns = target.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
+  btns.forEach(function(b){ b.style.display='none'; });
+
+  html2canvas(target, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#F0F2F5',
+    scrollY: 0,
+    windowWidth: target.scrollWidth,
+    height: target.scrollHeight
+  }).then(function(canvas){
+    btns.forEach(function(b){ b.style.display=''; });
+    if(loading) loading.textContent = '';
+
+    var link = document.createElement('a');
+    var now = new Date();
+    var fname = '긴급지원반_임무완료_' +
+      now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
+      pad(now.getHours()) + pad(now.getMinutes()) + '.png';
+    link.download = fname;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    if(loading) loading.textContent = '✅ 저장 완료!';
+    setTimeout(function(){ if(loading) loading.textContent=''; }, 2000);
+  }).catch(function(){
+    btns.forEach(function(b){ b.style.display=''; });
+    if(loading) loading.textContent = '❌ 캡처 실패. 다시 시도해주세요.';
+  });
+}
+</script>
 </head>
 <body>
 
@@ -473,6 +513,8 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
     </div>
     <div id="send-status" class="send-status"></div>
     <div id="review-body"></div>
+    <button class="capture-btn" onclick="captureScreen()">📸 결과화면 캡처 저장</button>
+    <div class="capture-loading" id="capture-loading"></div>
     <button class="print-btn" onclick="goSelectFromReview()">↩ 처음으로 돌아가기</button>
   </div>
 </div>
@@ -1273,6 +1315,42 @@ function sendToSheet(){
     if(statusEl){ statusEl.textContent = '✅ 기록이 저장되었습니다'; statusEl.className = 'send-status ok'; }
   }).catch(function(){
     if(statusEl){ statusEl.textContent = ''; statusEl.className = 'send-status'; }
+  });
+}
+
+// ── 결과화면 캡처
+function captureScreen(){
+  var loading = document.getElementById('capture-loading');
+  if(loading) loading.textContent = '📸 캡처 중...';
+
+  var target = document.getElementById('screen-review');
+  var btns = target.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
+  btns.forEach(function(b){ b.style.display='none'; });
+
+  html2canvas(target, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#F0F2F5',
+    scrollY: 0,
+    windowWidth: target.scrollWidth,
+    height: target.scrollHeight
+  }).then(function(canvas){
+    btns.forEach(function(b){ b.style.display=''; });
+    if(loading) loading.textContent = '';
+
+    var link = document.createElement('a');
+    var now = new Date();
+    var fname = '긴급지원반_임무완료_' +
+      now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
+      pad(now.getHours()) + pad(now.getMinutes()) + '.png';
+    link.download = fname;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    if(loading) loading.textContent = '✅ 저장 완료!';
+    setTimeout(function(){ if(loading) loading.textContent=''; }, 2000);
+  }).catch(function(){
+    btns.forEach(function(b){ b.style.display=''; });
+    if(loading) loading.textContent = '❌ 캡처 실패. 다시 시도해주세요.';
   });
 }
 </script>
