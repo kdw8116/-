@@ -62,6 +62,51 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
 .role-card.res:active .role-arrow,.role-card.res:hover .role-arrow{color:var(--orange)}
 .role-card.com:active .role-arrow,.role-card.com:hover .role-arrow{color:var(--purple)}
 .select-footer{text-align:center;font-size:11px;color:var(--text-muted);margin-top:16px;padding:0 16px}
+/* ── 출동단계 카드 ── */
+.depart-card{margin:0 16px;background:white;border-radius:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.08);border:1.5px solid rgba(192,57,43,0.12)}
+.depart-header{background:#C0392B;padding:10px 16px;display:flex;align-items:center;gap:8px}
+.depart-header span{font-size:13px;font-weight:700;color:white}
+.depart-items{display:flex;flex-direction:column}
+.depart-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:0.5px solid #F0F0F0;cursor:pointer;user-select:none;transition:background 0.12s}
+.depart-item:last-child{border-bottom:none}
+.depart-item:active{background:#FEF5F4}
+.depart-item.checked{background:#F4FDF8}
+.depart-item .d-circle{width:22px;height:22px;border-radius:50%;border:2px solid #CCC;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:white;transition:all 0.2s}
+.depart-item.checked .d-circle{background:var(--green);border-color:var(--green)}
+.d-tick{width:8px;height:5px;border-left:2px solid white;border-bottom:2px solid white;transform:rotate(-45deg) translateY(-1px);opacity:0;transition:opacity 0.15s}
+.depart-item.checked .d-tick{opacity:1}
+.depart-item .d-text{flex:1;font-size:13px;color:var(--text)}
+.depart-item.checked .d-text{color:#AAA;text-decoration:line-through;text-decoration-color:#CCC}
+.depart-item.disabled{opacity:0.35;pointer-events:none}
+.depart-sub-wrap{margin:0 16px}
+#depart-role-area.disabled .role-card{opacity:0.35;pointer-events:none}
+.depart-role-card{border-color:rgba(26,82,118,0.2) !important}
+.depart-role-card h3{color:#1A5276 !important}
+/* ── 현장 출동 전 종료 ── */
+.early-end-card{margin:0 16px;background:white;border-radius:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.08);border:1.5px solid rgba(86,101,115,0.2)}
+.early-end-item{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;user-select:none;transition:background 0.12s}
+.early-end-item:active{background:#F5F6F8}
+.early-end-item.checked{background:#F4FDF8}
+.early-end-item .ee-circle{width:24px;height:24px;border-radius:50%;border:2px solid #CCC;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:white;transition:all 0.2s}
+.early-end-item.checked .ee-circle{background:var(--gray);border-color:var(--gray)}
+.ee-tick{width:9px;height:6px;border-left:2px solid white;border-bottom:2px solid white;transform:rotate(-45deg) translateY(-1px);opacity:0;transition:opacity 0.15s}
+.early-end-item.checked .ee-tick{opacity:1}
+.ee-text{flex:1}
+.ee-label{font-size:13px;font-weight:600;color:var(--text)}
+.ee-desc{font-size:11px;color:var(--text-muted);margin-top:2px}
+.early-end-item.checked .ee-label{color:#AAA;text-decoration:line-through}
+.ee-time-out{font-size:13px;font-weight:700;color:var(--gray);min-width:42px;text-align:right}
+.early-end-item.disabled{opacity:0.35;pointer-events:none}
+/* ── 첫화면 임무완료 버튼 ── */
+.select-action-bar{padding:12px 16px 20px;background:transparent}
+.select-action-status{font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:8px}
+.select-action-status.ready{color:var(--green);font-weight:700}
+.select-btn-complete{width:100%;padding:13px;font-size:15px;font-weight:700;border:none;border-radius:12px;cursor:not-allowed;background:#CCC;color:white;font-family:inherit;transition:all 0.3s;letter-spacing:-0.3px}
+.select-btn-complete.active{background:var(--red);cursor:pointer;box-shadow:0 4px 16px rgba(192,57,43,0.3)}
+.select-btn-complete.active:active{transform:scale(0.98)}
+/* 요원카드 비활성화 */
+.role-cards.disabled .role-card{opacity:0.35;pointer-events:none}
+#role-select-cards.disabled .role-card{opacity:0.35;pointer-events:none}
 /* ── MEMBER CARD ── */
 .member-card{margin:0 16px;background:white;border-radius:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.08);border:1.5px solid rgba(192,57,43,0.12)}
 .member-row{display:flex;align-items:center;border-bottom:0.5px solid #F0F0F0}
@@ -286,9 +331,53 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
       </div>
     </div>
     <div class="select-divider">
+      <span>현장 출동 전 종료</span>
+    </div>
+    <div class="early-end-card">
+      <div class="early-end-item" id="early-end-item" onclick="toggleEarlyEnd()">
+        <div class="ee-circle"><div class="ee-tick"></div></div>
+        <div class="ee-text">
+          <div class="ee-label">현장 출동 전 종료</div>
+          <div class="ee-desc">체크 시 요원 선택 비활성화 · 임무완료 버튼 활성화</div>
+        </div>
+        <div class="ee-time-out" id="ee-time-out">--:--</div>
+      </div>
+    </div>
+    <div class="select-divider">
+      <span>출동단계</span>
+    </div>
+    <div class="role-cards" id="depart-role-area">
+      <div class="role-card depart-role-card" onclick="toggleDepartCard()">
+        <div class="role-icon" style="background:#EBF5FB">🚒</div>
+        <div class="role-info">
+          <h3 style="color:#1A5276">출동단계</h3>
+          <p>지원 장비 준비 확인 (12개 항목)</p>
+        </div>
+        <div class="role-arrow" id="depart-arrow">›</div>
+      </div>
+    </div>
+    <!-- 출동단계 하위 항목 (펼침) -->
+    <div class="depart-sub-wrap" id="depart-sub-wrap" style="display:none">
+      <div class="depart-card" id="depart-card">
+        <div class="phase-label" style="background:#2471A3;border-radius:0">
+          <span>📍 출동단계</span>
+        </div>
+        <div class="phase-items">
+          <div class="chk-item" id="depart-parent" onclick="toggleDepartParent()">
+            <div class="chk-circle" id="depart-parent-circle"><div class="tick" id="depart-parent-tick"></div></div>
+            <div class="chk-text">
+              <div class="chk-sub"><span class="kw kw-blue">지원준비</span></div>
+              <div class="chk-main">지원 장비 준비</div>
+            </div>
+          </div>
+          <div class="depart-items" id="depart-items"></div>
+        </div>
+      </div>
+    </div>
+    <div class="select-divider">
       <span>요원 선택</span>
     </div>
-    <div class="role-cards">
+    <div class="role-cards" id="role-select-cards">
       <div class="role-card cmd" onclick="selectRole('cmd')">
         <div class="role-icon">🎖️</div>
         <div class="role-info">
@@ -315,6 +404,10 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
       </div>
     </div>
     <div class="select-footer">각 요원별 임무를 빠짐없이 확인하세요</div>
+    <div class="select-action-bar">
+      <div class="select-action-status" id="select-action-status">소속·계급·성명 입력 후 활동 종료 또는 출동 전 종료 시 활성화</div>
+      <button class="select-btn-complete" id="select-btn-complete" disabled onclick="completeFromSelect()">임무 완료</button>
+    </div>
   </div>
 </div>
 
@@ -411,9 +504,6 @@ var ROLES = {
     subtitle:'현장 총괄 지휘 및 명령사항 관리',
     barColor:'#C0392B',
     phases:[
-      { phase:'출동단계', ph:'ph-red', items:[
-        { kw:'지원준비', kc:'kw-blue', main:'지원 장비 준비', subs:SUP }
-      ]},
       { phase:'현장도착단계', ph:'ph-blue', items:[
         { kw:'정보수집', kc:'kw-blue',  main:'현장 정보 수집',
           subs:['상황실·선착대 무전 교신','P119 활용 상황 파악','기타'] },
@@ -443,9 +533,6 @@ var ROLES = {
     subtitle:'자원 관리 및 소방력 운영 지원',
     barColor:'#E67E22',
     phases:[
-      { phase:'출동단계', ph:'ph-red', items:[
-        { kw:'지원준비', kc:'kw-blue', main:'지원 장비 준비', subs:SUP }
-      ]},
       { phase:'현장도착단계', ph:'ph-blue', items:[
         { kw:'정보수집', kc:'kw-blue',  main:'현장 정보 수집',
           subs:['상황실·선착대 무전 교신','P119 활용 상황 파악'] },
@@ -481,9 +568,6 @@ var ROLES = {
     subtitle:'통신체계 확보 및 비상동원 지원',
     barColor:'#7D3C98',
     phases:[
-      { phase:'출동단계', ph:'ph-red', items:[
-        { kw:'지원준비', kc:'kw-blue', main:'지원 장비 준비', subs:SUP }
-      ]},
       { phase:'현장도착단계', ph:'ph-blue', items:[
         { kw:'정보수집', kc:'kw-blue',  main:'현장 정보 수집',
           subs:['상황실·선착대 무전 교신','P119 활용 상황 파악'] },
@@ -561,8 +645,178 @@ var totalCount  = 0;
 var completedTime = null;
 var completedDate = null;
 var parentToSubs  = {};
-var activityEndTime = null;   // 지원반 철수 완료 시각
-var withdrawalSids  = [];     // 종료 세부항목 sid 목록
+var activityEndTime = null;
+var withdrawalSids  = [];
+var departChecked = new Set();   // 첫화면 출동단계 체크
+var earlyEndTime  = null;        // 현장 출동 전 종료 시각
+
+// 출동단계 항목 (공통)
+var SUP_ITEMS = [
+  '천막','테이블','의자','소모품박스',
+  '조끼','헬멧','상황판','이젤',
+  '긴급지원반 백팩','PS-LTE 가방',
+  '식수(이온음료 포함)','기타'
+];
+
+// 출동단계 체크박스 생성
+function buildDepartItems(){
+  var wrap = document.getElementById('depart-items');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  SUP_ITEMS.forEach(function(item, i){
+    var div = document.createElement('div');
+    div.className = 'depart-item' + (departChecked.has(i) ? ' checked' : '');
+    div.setAttribute('data-di', i);
+    div.innerHTML = '<div class="d-circle"><div class="d-tick"></div></div>' +
+      '<div class="d-text">' + item + '</div>';
+    div.onclick = function(){ toggleDepart(i); };
+    wrap.appendChild(div);
+  });
+}
+
+function toggleDepart(idx){
+  if(departChecked.has(idx)){
+    departChecked.delete(idx);
+  } else {
+    departChecked.add(idx);
+  }
+  var el = document.querySelector('[data-di="' + idx + '"]');
+  if(el) el.classList.toggle('checked', departChecked.has(idx));
+  // 부모 자동 체크
+  var parentEl = document.getElementById('depart-parent');
+  var parentCircle = document.getElementById('depart-parent-circle');
+  var parentTick = document.getElementById('depart-parent-tick');
+  if(departChecked.size === SUP_ITEMS.length){
+    if(parentEl) parentEl.classList.add('checked');
+    if(parentCircle) parentCircle.style.cssText = 'background:var(--green);border-color:var(--green)';
+    if(parentTick) parentTick.style.opacity = '1';
+  } else {
+    if(parentEl) parentEl.classList.remove('checked');
+    if(parentCircle) parentCircle.style.cssText = '';
+    if(parentTick) parentTick.style.opacity = '0';
+  }
+  updateSelectBtn();
+}
+
+function toggleDepartParent(){
+  var allChecked = (departChecked.size === SUP_ITEMS.length);
+  var parentEl = document.getElementById('depart-parent');
+  var parentCircle = document.getElementById('depart-parent-circle');
+  var parentTick = document.getElementById('depart-parent-tick');
+  if(allChecked){
+    departChecked.clear();
+    if(parentEl) parentEl.classList.remove('checked');
+    if(parentCircle) parentCircle.style.cssText = '';
+    if(parentTick) parentTick.style.opacity = '0';
+    document.querySelectorAll('[data-di]').forEach(function(el){ el.classList.remove('checked'); });
+  } else {
+    SUP_ITEMS.forEach(function(_, i){ departChecked.add(i); });
+    if(parentEl) parentEl.classList.add('checked');
+    if(parentCircle) parentCircle.style.cssText = 'background:var(--green);border-color:var(--green)';
+    if(parentTick) parentTick.style.opacity = '1';
+    document.querySelectorAll('[data-di]').forEach(function(el){ el.classList.add('checked'); });
+  }
+  updateSelectBtn();
+}
+
+var departCardOpen = false;
+function toggleDepartCard(){
+  departCardOpen = !departCardOpen;
+  var wrap = document.getElementById('depart-sub-wrap');
+  var arrow = document.getElementById('depart-arrow');
+  if(wrap) wrap.style.display = departCardOpen ? 'block' : 'none';
+  if(arrow) arrow.textContent = departCardOpen ? '∨' : '›';
+  if(departCardOpen) buildDepartItems();
+}
+
+// 현장 출동 전 종료
+function toggleEarlyEnd(){
+  var item = document.getElementById('early-end-item');
+  var timeOut = document.getElementById('ee-time-out');
+  var roleSelectCards = document.getElementById('role-select-cards');
+  var departArea = document.getElementById('depart-role-area');
+  var departSubWrap = document.getElementById('depart-sub-wrap');
+
+  if(earlyEndTime){
+    // 해제 → 출동단계·요원선택 활성화
+    earlyEndTime = null;
+    activityEndTime = null;
+    item.classList.remove('checked');
+    timeOut.textContent = '--:--';
+    if(roleSelectCards) roleSelectCards.classList.remove('disabled');
+    if(departArea) departArea.classList.remove('disabled');
+    if(departSubWrap){ departSubWrap.style.pointerEvents=''; departSubWrap.style.opacity=''; }
+    enableActivityEnd();
+  } else {
+    // 체크 - 활동 종료 시간이 이미 있으면 불가
+    if(activityEndTime && !earlyEndTime){ return; }
+    var now = new Date();
+    earlyEndTime = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    activityEndTime = earlyEndTime;
+    item.classList.add('checked');
+    timeOut.textContent = earlyEndTime;
+    // 출동단계 비활성화
+    if(departArea) departArea.classList.add('disabled');
+    if(departSubWrap){ departSubWrap.style.pointerEvents='none'; departSubWrap.style.opacity='0.35'; }
+    // 요원선택 비활성화
+    if(roleSelectCards) roleSelectCards.classList.add('disabled');
+    disableActivityEnd();
+  }
+  updateSelectBtn();
+}
+
+function disableActivityEnd(){
+  // 체크리스트 화면의 지원반 철수 완료 비활성화
+  withdrawalSids.forEach(function(sid){
+    var el = document.querySelector('[data-id="' + sid + '"]');
+    if(el && !checkedIds.has(sid)) el.style.opacity = '0.3';
+    if(el) el.style.pointerEvents = 'none';
+  });
+}
+
+function enableActivityEnd(){
+  withdrawalSids.forEach(function(sid){
+    var el = document.querySelector('[data-id="' + sid + '"]');
+    if(el){ el.style.opacity = ''; el.style.pointerEvents = ''; }
+  });
+}
+
+// 첫화면 임무완료 버튼 활성화 조건 체크
+function updateSelectBtn(){
+  var btn = document.getElementById('select-btn-complete');
+  var status = document.getElementById('select-action-status');
+  if(!btn) return;
+
+  var unit  = (document.getElementById('member-unit')||{}).value || '';
+  var rank  = (document.getElementById('member-rank') ? document.getElementById('member-rank').value : '') || '';
+  var mname = (document.getElementById('member-name')||{}).value || '';
+  var infoOk = unit.trim() && rank && mname.trim();
+  var endOk  = earlyEndTime || activityEndTime;
+
+  if(infoOk && endOk){
+    btn.disabled = false;
+    btn.classList.add('active');
+    status.textContent = '✅ 임무 완료 버튼이 활성화되었습니다';
+    status.classList.add('ready');
+  } else {
+    btn.disabled = true;
+    btn.classList.remove('active');
+    if(!infoOk){
+      status.textContent = '소속·계급·성명을 입력하세요';
+      status.classList.remove('ready');
+    } else {
+      status.textContent = '활동 종료 또는 현장 출동 전 종료를 체크하세요';
+      status.classList.remove('ready');
+    }
+  }
+}
+
+function completeFromSelect(){
+  recordTime();
+  // 요원 선택 없이 완료 시 currentRole 처리
+  if(!currentRole) currentRole = 'none';
+  showReview();
+}
 
 // ══════════════════════════════════════════
 // NAVIGATION
@@ -573,11 +827,20 @@ function showScreen(id){
   window.scrollTo(0, 0);
   // 첫 화면(select)에서는 앱 헤더 숨김 (자체 히어로 헤더가 있음)
   document.querySelector('.app-header').style.display = (id === 'select') ? 'none' : 'flex';
+  if(id === 'select'){
+    buildDepartItems();
+    // 소속/계급/성명 입력 시 버튼 상태 갱신
+    ['member-unit','member-rank','member-name'].forEach(function(fid){
+      var el = document.getElementById(fid);
+      if(el){ el.oninput = updateSelectBtn; el.onchange = updateSelectBtn; }
+    });
+    updateSelectBtn();
+  }
 }
-function goBack(){ reset(); showScreen('select'); }
+function goBack(){ departChecked.clear(); reset(); showScreen('select'); }
 function showList(){ showScreen('list'); }
-function goSelectFromReview(){ reset(); showScreen('select'); }
-function reset(){ checkedIds.clear(); completedTime = null; parentToSubs = {}; activityEndTime = null; withdrawalSids = []; }
+function goSelectFromReview(){ departChecked.clear(); reset(); showScreen('select'); }
+function reset(){ checkedIds.clear(); completedTime = null; parentToSubs = {}; activityEndTime = null; withdrawalSids = []; earlyEndTime = null; departCardOpen=false; var dw=document.getElementById('depart-sub-wrap'); if(dw){ dw.style.display='none'; dw.style.pointerEvents=''; dw.style.opacity=''; } var da2=document.getElementById('depart-role-area'); if(da2) da2.classList.remove('disabled'); var da=document.getElementById('depart-arrow'); if(da) da.textContent='›'; var rc=document.getElementById('role-select-cards'); if(rc) rc.classList.remove('disabled'); var ee=document.getElementById('early-end-item'); if(ee) ee.classList.remove('checked'); var eet=document.getElementById('ee-time-out'); if(eet) eet.textContent='--:--'; }
 
 // ══════════════════════════════════════════
 // SELECT ROLE
@@ -779,10 +1042,18 @@ function updateProgress(){
   var br = document.getElementById('btn-review');
   var st = document.getElementById('action-status');
 
-  if(n === totalCount && totalCount > 0){
+  // 활동 종료 OR 현장출동전종료 중 하나라도 있으면 활성화 (전체 완료 불필요)
+  var endOk = !!(activityEndTime || earlyEndTime);
+  var allDone = (n === totalCount && totalCount > 0);
+
+  if(endOk || allDone){
     bc.disabled = false; bc.classList.add('active');
     br.disabled = false; br.classList.add('active');
-    st.textContent = '✅ 전체 완료! 임무완료 또는 내용 확인을 눌러주세요';
+    if(allDone){
+      st.textContent = '✅ 전체 완료! 임무완료 버튼을 눌러주세요';
+    } else {
+      st.textContent = '✅ 종료 시각이 기록되었습니다. 임무완료를 눌러주세요';
+    }
     st.classList.add('all-done');
     bc.textContent = '🎖️ 임무 완료';
   } else {
@@ -798,7 +1069,6 @@ function updateProgress(){
 // COMPLETE & TIME
 // ══════════════════════════════════════════
 function completeTask(){
-  if(checkedIds.size < totalCount) return;
   recordTime();
   showReview();
 }
@@ -817,34 +1087,64 @@ function pad(n){ return String(n).padStart(2,'0'); }
 // ══════════════════════════════════════════
 function showReview(){
   if(!completedTime) recordTime();
-  var rd = ROLES[currentRole];
-  document.getElementById('rv-role-name').textContent = rd.name + ' 임무 완료 보고서';
-  var unit = (document.getElementById('member-unit')||{}).value || '';
-  var rank = (document.getElementById('member-rank')||{}).value || '';
+
+  var unit  = (document.getElementById('member-unit')||{}).value || '';
+  var rank  = (document.getElementById('member-rank')||{}).value || '';
   var mname = (document.getElementById('member-name')||{}).value || '';
   var memberStr = [unit, rank, mname].filter(Boolean).join(' · ');
+
+  // ── 현장 출동 전 종료: 간소화 화면
+  if(earlyEndTime && !currentRole){
+    document.getElementById('rv-role-name').textContent = '출동 전 종료 임무 완료 보고서';
+    document.getElementById('rv-member-info').textContent = memberStr || '대원 정보 미입력';
+    document.getElementById('rv-time').textContent  = completedTime;
+    document.getElementById('rv-date').textContent  = completedDate;
+    document.getElementById('rv-score').style.display = 'none';
+
+    document.getElementById('rv-time-essential').textContent = mobilizeTime.essential || '미기록';
+    document.getElementById('rv-time-general').textContent   = mobilizeTime.general   || '미기록';
+    document.getElementById('rv-active-duration').textContent = earlyEndTime;
+
+    // 총 활동 시간 계산
+    var sonjipTime0 = mobilizeTime.essential || mobilizeTime.general;
+    if(sonjipTime0 && earlyEndTime){
+      var bH0=parseInt(sonjipTime0.split(':')[0]), bM0=parseInt(sonjipTime0.split(':')[1]);
+      var eH0=parseInt(earlyEndTime.split(':')[0]), eM0=parseInt(earlyEndTime.split(':')[1]);
+      var diff0=(eH0*60+eM0)-(bH0*60+bM0); if(diff0<0) diff0+=1440;
+      document.getElementById('rv-elapsed').textContent = Math.floor(diff0/60)+'시간 '+diff0%60+'분';
+    } else {
+      document.getElementById('rv-elapsed').textContent = '정보 부족';
+    }
+
+    // 하위 체크리스트 내역 숨김
+    document.getElementById('review-body').innerHTML = '';
+    showScreen('review');
+    sendToSheet();
+    return;
+  }
+
+  // ── 일반 요원 선택 완료 화면
+  document.getElementById('rv-score').style.display = '';
+  var rd = currentRole && ROLES[currentRole] ? ROLES[currentRole] : {name:'임무', phases:[]};
+  document.getElementById('rv-role-name').textContent = rd.name + ' 임무 완료 보고서';
   document.getElementById('rv-member-info').textContent = memberStr || '대원 정보 미입력';
   document.getElementById('rv-time').textContent      = completedTime;
   document.getElementById('rv-date').textContent      = completedDate;
   document.getElementById('rv-score').textContent     = '체크 완료: ' + checkedIds.size + ' / ' + totalCount + ' 항목';
 
-  // 비상소집 시간 연동
   document.getElementById('rv-time-essential').textContent = mobilizeTime.essential || '미기록';
   document.getElementById('rv-time-general').textContent   = mobilizeTime.general   || '미기록';
 
-  // 활동 종료 시간 연동
-  var endT = activityEndTime || '미기록';
-  document.getElementById('rv-active-duration').textContent = endT !== '미기록' ? endT : '미기록';
+  var endT = activityEndTime || earlyEndTime || null;
+  document.getElementById('rv-active-duration').textContent = endT || '미기록';
 
-  // 활동 시간 = 응소시간 → 활동 종료 시간
   var sonjipTime = mobilizeTime.essential || mobilizeTime.general;
-  if(sonjipTime && activityEndTime){
-    var bH2 = parseInt(sonjipTime.split(':')[0]),    bM2 = parseInt(sonjipTime.split(':')[1]);
-    var eH2 = parseInt(activityEndTime.split(':')[0]), eM2 = parseInt(activityEndTime.split(':')[1]);
-    var diff2 = (eH2 * 60 + eM2) - (bH2 * 60 + bM2);
-    if(diff2 < 0) diff2 += 1440;
-    var dH2 = Math.floor(diff2/60), dM2 = diff2 % 60;
-    document.getElementById('rv-elapsed').textContent = dH2 + '시간 ' + dM2 + '분';
+  var finalEndTime = activityEndTime || earlyEndTime;
+  if(sonjipTime && finalEndTime){
+    var bH2=parseInt(sonjipTime.split(':')[0]), bM2=parseInt(sonjipTime.split(':')[1]);
+    var eH2=parseInt(finalEndTime.split(':')[0]), eM2=parseInt(finalEndTime.split(':')[1]);
+    var diff2=(eH2*60+eM2)-(bH2*60+bM2); if(diff2<0) diff2+=1440;
+    document.getElementById('rv-elapsed').textContent = Math.floor(diff2/60)+'시간 '+diff2%60+'분';
   } else {
     document.getElementById('rv-elapsed').textContent = '정보 부족';
   }
@@ -852,6 +1152,35 @@ function showReview(){
   var body = document.getElementById('review-body');
   body.innerHTML = '';
   var ic = 0;
+
+  // ── 출동단계 카드 (첫화면 체크 현황)
+  var departCard = document.createElement('div');
+  departCard.className = 'review-card';
+  var departH3 = document.createElement('h3');
+  departH3.textContent = '📍 출동단계';
+  departCard.appendChild(departH3);
+
+  // 지원준비 부모 행
+  var allDeptChecked = (departChecked.size === SUP_ITEMS.length);
+  var dRow = document.createElement('div');
+  dRow.className = 'review-item';
+  dRow.innerHTML =
+    '<div class="rv-dot '+(allDeptChecked?'rv-done':'rv-miss')+'">'+(allDeptChecked?'✓':'–')+'</div>'+
+    '<div class="'+(allDeptChecked?'rv-text-done':'rv-text-miss')+'" style="font-weight:500">[지원준비] 지원 장비 준비</div>';
+  departCard.appendChild(dRow);
+
+  // 세부 항목 12개
+  SUP_ITEMS.forEach(function(item, idx){
+    var done = departChecked.has(idx);
+    var sr = document.createElement('div');
+    sr.className = 'review-item';
+    sr.style.paddingLeft = '24px';
+    sr.innerHTML =
+      '<div class="rv-dot '+(done?'rv-done':'rv-miss')+'" style="width:14px;height:14px;font-size:8px">'+(done?'✓':'–')+'</div>'+
+      '<div class="'+(done?'rv-text-done':'rv-text-miss')+'">'+item+'</div>';
+    departCard.appendChild(sr);
+  });
+  body.appendChild(departCard);
 
   rd.phases.forEach(function(ph){
     var card = document.createElement('div');
@@ -866,19 +1195,19 @@ function showReview(){
       var row  = document.createElement('div');
       row.className = 'review-item';
       row.innerHTML =
-        '<div class="rv-dot ' + (done ? 'rv-done' : 'rv-miss') + '">' + (done ? '✓' : '–') + '</div>' +
-        '<div class="' + (done ? 'rv-text-done' : 'rv-text-miss') + '" style="font-weight:500">[' + item.kw + '] ' + item.main + '</div>';
+        '<div class="rv-dot '+(done?'rv-done':'rv-miss')+'">'+(done?'✓':'–')+'</div>'+
+        '<div class="'+(done?'rv-text-done':'rv-text-miss')+'" style="font-weight:500">['+item.kw+'] '+item.main+'</div>';
       card.appendChild(row);
 
       item.subs.forEach(function(sub){
-        var sid   = 'chk-' + ic; ic++;
+        var sid  = 'chk-' + ic; ic++;
         var sdone = checkedIds.has(sid);
-        var sr    = document.createElement('div');
+        var sr   = document.createElement('div');
         sr.className = 'review-item';
         sr.style.paddingLeft = '24px';
         sr.innerHTML =
-          '<div class="rv-dot ' + (sdone ? 'rv-done' : 'rv-miss') + '" style="width:14px;height:14px;font-size:8px">' + (sdone ? '✓' : '–') + '</div>' +
-          '<div class="' + (sdone ? 'rv-text-done' : 'rv-text-miss') + '">' + sub + '</div>';
+          '<div class="rv-dot '+(sdone?'rv-done':'rv-miss')+'" style="width:14px;height:14px;font-size:8px">'+(sdone?'✓':'–')+'</div>'+
+          '<div class="'+(sdone?'rv-text-done':'rv-text-miss')+'">'+sub+'</div>';
         card.appendChild(sr);
       });
     });
@@ -896,8 +1225,10 @@ function showReview(){
 // ══════════════════════════════════════════
 function sendToSheet(){
   if(!WEBHOOK_URL || WEBHOOK_URL === 'YOUR_WEBHOOK_URL_HERE') return;
+  // 현장 출동 전 종료(요원 미선택)인 경우 전송 시도하지 않음
+  if(!currentRole || currentRole === 'none' || earlyEndTime) return;
 
-  var rd = ROLES[currentRole];
+  var rd = (currentRole && ROLES[currentRole]) ? ROLES[currentRole] : {name:'출동 전 종료'};
   var sonjipTime = mobilizeTime.essential || mobilizeTime.general;
   var elapsedText = '미기록';
   if(sonjipTime && activityEndTime){
@@ -921,7 +1252,8 @@ function sendToSheet(){
     memberName:    (document.getElementById('member-name')||{}).value || '',
     essentialTime: mobilizeTime.essential || null,
     generalTime:   mobilizeTime.general   || null,
-    endTime:       activityEndTime || null,
+    endTime:       activityEndTime || earlyEndTime || null,
+    earlyEnd:      earlyEndTime ? '현장출동전종료' : null,
     elapsed:       elapsedText,
     checked:       checkedIds.size,
     total:         totalCount,
@@ -940,7 +1272,7 @@ function sendToSheet(){
   }).then(function(){
     if(statusEl){ statusEl.textContent = '✅ 기록이 저장되었습니다'; statusEl.className = 'send-status ok'; }
   }).catch(function(){
-    if(statusEl){ statusEl.textContent = '⚠️ 저장 실패 (네트워크 확인)'; statusEl.className = 'send-status fail'; }
+    if(statusEl){ statusEl.textContent = ''; statusEl.className = 'send-status'; }
   });
 }
 </script>
