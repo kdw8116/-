@@ -97,6 +97,7 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
 .early-end-item.checked .ee-label{color:#AAA;text-decoration:line-through}
 .ee-time-out{font-size:13px;font-weight:700;color:var(--gray);min-width:42px;text-align:right}
 .early-end-item.disabled{opacity:0.35;pointer-events:none}
+#early-end-item.disabled{opacity:0.35;pointer-events:none;cursor:not-allowed}
 /* ── 첫화면 임무완료 버튼 ── */
 .select-action-bar{padding:12px 16px 20px;background:transparent}
 .select-action-status{font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:8px}
@@ -252,37 +253,99 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
 // ── 결과화면 캡처
 function captureScreen(){
   var loading = document.getElementById('capture-loading');
-  if(loading) loading.textContent = '📸 캡처 중...';
+  if(loading) loading.textContent = '📸 저장 준비 중...';
 
-  var target = document.getElementById('screen-review');
-  var btns = target.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
-  btns.forEach(function(b){ b.style.display='none'; });
+  var reviewEl = document.getElementById('screen-review');
+  var headerEl = document.querySelector('.app-header');
 
-  html2canvas(target, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#F0F2F5',
-    scrollY: 0,
-    windowWidth: target.scrollWidth,
-    height: target.scrollHeight
-  }).then(function(canvas){
-    btns.forEach(function(b){ b.style.display=''; });
-    if(loading) loading.textContent = '';
+  // 현재 페이지의 모든 스타일 수집
+  var styles = '';
+  var sheets = document.styleSheets;
+  for(var i=0; i<sheets.length; i++){
+    try {
+      var rules = sheets[i].cssRules || sheets[i].rules;
+      for(var j=0; j<rules.length; j++){
+        styles += rules[j].cssText + '\n';
+      }
+    } catch(e){}
+  }
 
-    var link = document.createElement('a');
-    var now = new Date();
-    var fname = '긴급지원반_임무완료_' +
-      now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
-      pad(now.getHours()) + pad(now.getMinutes()) + '.png';
-    link.download = fname;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    if(loading) loading.textContent = '✅ 저장 완료!';
-    setTimeout(function(){ if(loading) loading.textContent=''; }, 2000);
-  }).catch(function(){
-    btns.forEach(function(b){ b.style.display=''; });
-    if(loading) loading.textContent = '❌ 캡처 실패. 다시 시도해주세요.';
+  // 헤더 클론
+  var headerClone = headerEl ? headerEl.cloneNode(true) : null;
+
+  // 결과화면 클론 (버튼 제외)
+  var clone = reviewEl.cloneNode(true);
+  clone.style.display = 'block';
+  var cloneBtns = clone.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
+  cloneBtns.forEach(function(b){ b.style.display='none'; });
+
+  // 현장도착단계 카드에 page-break-before 추가
+  var reviewCards = clone.querySelectorAll('.review-card');
+  reviewCards.forEach(function(card){
+    var h3 = card.querySelector('h3');
+    if(h3 && h3.textContent.indexOf('현장도착단계') !== -1){
+      card.classList.add('page-break-before');
+    }
   });
+
+  var now = new Date();
+  var fname = '긴급지원반_임무완료_' +
+    now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
+    pad(now.getHours()) + pad(now.getMinutes());
+
+  var html = '<!DOCTYPE html><html><head>' +
+    '<meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + fname + '</title>' +
+    '<style>' + styles + '</style>' +
+    '<style>' +
+    ':root{' +
+    '--red:#C0392B;--red-dark:#922B21;' +
+    '--orange:#E67E22;--purple:#7D3C98;' +
+    '--green:#1E8449;--blue:#1A5276;' +
+    '--gray:#566573;--gray-light:#F2F3F4;' +
+    '--text:#1a1a1a;--text-muted:#6c757d;' +
+    '--border:rgba(0,0,0,0.1);' +
+    '--shadow:0 2px 12px rgba(0,0,0,0.12);' +
+    '}' +
+    'body{background:#F0F2F5;margin:0;padding:0;font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;}' +
+    '.app-header{position:static !important;}' +
+    '.screen{display:block !important;}' +
+    '@media print{' +
+    '@page{margin:10mm;size:auto;}' +
+    'html,body{height:auto;}' +
+    'body{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}' +
+    '.summary-box{page-break-after:avoid;}' +
+    '.rv-time-inputs{page-break-after:avoid;}' +
+    '.review-card{page-break-inside:avoid;}' +
+    '.review-card.page-break-before{page-break-before:always !important;}' +
+    '}' +
+    '</style>' +
+    '</head><body>' +
+    (headerClone ? headerClone.outerHTML : '') +
+    clone.outerHTML +
+    '<script>' +
+    'window.onload = function(){' +
+    '  window.print();' +
+    '  window.onfocus = function(){ window.close(); };' +
+    '};' +
+    '<\/script>' +
+    '</body></html>';
+
+  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var win = window.open(url, '_blank');
+  if(!win){
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fname + '.html';
+    a.click();
+  }
+  if(loading) loading.textContent = '✅ 새 창에서 저장하세요';
+  setTimeout(function(){
+    if(loading) loading.textContent = '';
+    URL.revokeObjectURL(url);
+  }, 8000);
 }
 </script>
 </head>
@@ -791,6 +854,9 @@ function toggleEarlyEnd(){
   var departArea = document.getElementById('depart-role-area');
   var departSubWrap = document.getElementById('depart-sub-wrap');
 
+  // 요원 체크리스트에 항목이 체크된 경우 현장 출동 전 종료 불가
+  if(!earlyEndTime && checkedIds.size > 0){ return; }
+
   if(earlyEndTime){
     // 해제 → 출동단계·요원선택 활성화
     earlyEndTime = null;
@@ -809,6 +875,20 @@ function toggleEarlyEnd(){
     activityEndTime = earlyEndTime;
     item.classList.add('checked');
     timeOut.textContent = earlyEndTime;
+
+    // 요원 체크 항목 전체 해제
+    if(checkedIds.size > 0){
+      checkedIds.clear();
+      document.querySelectorAll('.chk-item.checked, .sub-item.checked').forEach(function(el){
+        el.classList.remove('checked');
+      });
+      // 활동 종료 배지 초기화
+      document.querySelectorAll('.sub-end-time').forEach(function(el){
+        el.innerHTML = '';
+      });
+      activityEndTime = earlyEndTime; // 체크 초기화 후 다시 설정
+    }
+
     // 출동단계 비활성화
     if(departArea) departArea.classList.add('disabled');
     if(departSubWrap){ departSubWrap.style.pointerEvents='none'; departSubWrap.style.opacity='0.35'; }
@@ -848,7 +928,20 @@ function updateSelectBtn(){
   var infoOk = unit.trim() && rank && mname.trim();
   var endOk  = earlyEndTime || activityEndTime;
 
-  if(infoOk && endOk){
+  // 요원 체크리스트에 하나라도 체크되어 있으면 첫화면 임무완료 비활성화
+  var roleChecked = checkedIds.size > 0;
+
+  // 요원 체크 있으면 현장 출동 전 종료 비활성화
+  var eeItem = document.getElementById('early-end-item');
+  if(eeItem){
+    if(roleChecked && !earlyEndTime){
+      eeItem.classList.add('disabled');
+    } else {
+      eeItem.classList.remove('disabled');
+    }
+  }
+
+  if(infoOk && endOk && !roleChecked){
     btn.disabled = false;
     btn.classList.add('active');
     status.textContent = '✅ 임무 완료 버튼이 활성화되었습니다';
@@ -856,7 +949,10 @@ function updateSelectBtn(){
   } else {
     btn.disabled = true;
     btn.classList.remove('active');
-    if(!infoOk){
+    if(roleChecked){
+      status.textContent = '요원 체크리스트가 진행 중입니다. 해당 요원에서 임무완료를 눌러주세요';
+      status.classList.remove('ready');
+    } else if(!infoOk){
       status.textContent = '소속·계급·성명을 입력하세요';
       status.classList.remove('ready');
     } else {
@@ -1431,37 +1527,99 @@ function sendToSheet(){
 // ── 결과화면 캡처
 function captureScreen(){
   var loading = document.getElementById('capture-loading');
-  if(loading) loading.textContent = '📸 캡처 중...';
+  if(loading) loading.textContent = '📸 저장 준비 중...';
 
-  var target = document.getElementById('screen-review');
-  var btns = target.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
-  btns.forEach(function(b){ b.style.display='none'; });
+  var reviewEl = document.getElementById('screen-review');
+  var headerEl = document.querySelector('.app-header');
 
-  html2canvas(target, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#F0F2F5',
-    scrollY: 0,
-    windowWidth: target.scrollWidth,
-    height: target.scrollHeight
-  }).then(function(canvas){
-    btns.forEach(function(b){ b.style.display=''; });
-    if(loading) loading.textContent = '';
+  // 현재 페이지의 모든 스타일 수집
+  var styles = '';
+  var sheets = document.styleSheets;
+  for(var i=0; i<sheets.length; i++){
+    try {
+      var rules = sheets[i].cssRules || sheets[i].rules;
+      for(var j=0; j<rules.length; j++){
+        styles += rules[j].cssText + '\n';
+      }
+    } catch(e){}
+  }
 
-    var link = document.createElement('a');
-    var now = new Date();
-    var fname = '긴급지원반_임무완료_' +
-      now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
-      pad(now.getHours()) + pad(now.getMinutes()) + '.png';
-    link.download = fname;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    if(loading) loading.textContent = '✅ 저장 완료!';
-    setTimeout(function(){ if(loading) loading.textContent=''; }, 2000);
-  }).catch(function(){
-    btns.forEach(function(b){ b.style.display=''; });
-    if(loading) loading.textContent = '❌ 캡처 실패. 다시 시도해주세요.';
+  // 헤더 클론
+  var headerClone = headerEl ? headerEl.cloneNode(true) : null;
+
+  // 결과화면 클론 (버튼 제외)
+  var clone = reviewEl.cloneNode(true);
+  clone.style.display = 'block';
+  var cloneBtns = clone.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
+  cloneBtns.forEach(function(b){ b.style.display='none'; });
+
+  // 현장도착단계 카드에 page-break-before 추가
+  var reviewCards = clone.querySelectorAll('.review-card');
+  reviewCards.forEach(function(card){
+    var h3 = card.querySelector('h3');
+    if(h3 && h3.textContent.indexOf('현장도착단계') !== -1){
+      card.classList.add('page-break-before');
+    }
   });
+
+  var now = new Date();
+  var fname = '긴급지원반_임무완료_' +
+    now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
+    pad(now.getHours()) + pad(now.getMinutes());
+
+  var html = '<!DOCTYPE html><html><head>' +
+    '<meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + fname + '</title>' +
+    '<style>' + styles + '</style>' +
+    '<style>' +
+    ':root{' +
+    '--red:#C0392B;--red-dark:#922B21;' +
+    '--orange:#E67E22;--purple:#7D3C98;' +
+    '--green:#1E8449;--blue:#1A5276;' +
+    '--gray:#566573;--gray-light:#F2F3F4;' +
+    '--text:#1a1a1a;--text-muted:#6c757d;' +
+    '--border:rgba(0,0,0,0.1);' +
+    '--shadow:0 2px 12px rgba(0,0,0,0.12);' +
+    '}' +
+    'body{background:#F0F2F5;margin:0;padding:0;font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;}' +
+    '.app-header{position:static !important;}' +
+    '.screen{display:block !important;}' +
+    '@media print{' +
+    '@page{margin:10mm;size:auto;}' +
+    'html,body{height:auto;}' +
+    'body{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}' +
+    '.summary-box{page-break-after:avoid;}' +
+    '.rv-time-inputs{page-break-after:avoid;}' +
+    '.review-card{page-break-inside:avoid;}' +
+    '.review-card.page-break-before{page-break-before:always !important;}' +
+    '}' +
+    '</style>' +
+    '</head><body>' +
+    (headerClone ? headerClone.outerHTML : '') +
+    clone.outerHTML +
+    '<script>' +
+    'window.onload = function(){' +
+    '  window.print();' +
+    '  window.onfocus = function(){ window.close(); };' +
+    '};' +
+    '<\/script>' +
+    '</body></html>';
+
+  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var win = window.open(url, '_blank');
+  if(!win){
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fname + '.html';
+    a.click();
+  }
+  if(loading) loading.textContent = '✅ 새 창에서 저장하세요';
+  setTimeout(function(){
+    if(loading) loading.textContent = '';
+    URL.revokeObjectURL(url);
+  }, 8000);
 }
 
 // ══════════════════════════════════════════
