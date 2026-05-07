@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#C0392B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="긴급지원반">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>긴급지원반 임무 체크리스트</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -253,99 +259,112 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun G
 // ── 결과화면 캡처
 function captureScreen(){
   var loading = document.getElementById('capture-loading');
-  if(loading) loading.textContent = '📸 저장 준비 중...';
+  if(loading) loading.textContent = '📸 저장 중...';
 
   var reviewEl = document.getElementById('screen-review');
   var headerEl = document.querySelector('.app-header');
 
-  // 현재 페이지의 모든 스타일 수집
-  var styles = '';
-  var sheets = document.styleSheets;
-  for(var i=0; i<sheets.length; i++){
-    try {
-      var rules = sheets[i].cssRules || sheets[i].rules;
-      for(var j=0; j<rules.length; j++){
-        styles += rules[j].cssText + '\n';
-      }
-    } catch(e){}
-  }
+  // 버튼 숨김
+  var btns = reviewEl.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
+  btns.forEach(function(b){ b.style.display='none'; });
 
-  // 헤더 클론
-  var headerClone = headerEl ? headerEl.cloneNode(true) : null;
+  // 헤더 임시 표시
+  var headerOrigDisplay = headerEl ? headerEl.style.display : '';
+  if(headerEl) headerEl.style.display = 'flex';
 
-  // 결과화면 클론 (버튼 제외)
-  var clone = reviewEl.cloneNode(true);
-  clone.style.display = 'block';
-  var cloneBtns = clone.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
-  cloneBtns.forEach(function(b){ b.style.display='none'; });
+  // ── 캡처할 요소 목록 (헤더 + 결과화면)
+  var targets = headerEl ? [headerEl, reviewEl] : [reviewEl];
 
-  // 현장도착단계 카드에 page-break-before 추가
-  var reviewCards = clone.querySelectorAll('.review-card');
-  reviewCards.forEach(function(card){
-    var h3 = card.querySelector('h3');
-    if(h3 && h3.textContent.indexOf('현장도착단계') !== -1){
-      card.classList.add('page-break-before');
-    }
+  // ── 각 요소의 모든 하위 요소에 계산된 색상 인라인 강제 적용
+  var savedData = [];
+  targets.forEach(function(root){
+    var els = [root].concat(Array.from(root.querySelectorAll('*')));
+    els.forEach(function(el){
+      var prev = el.getAttribute('style') || '';
+      var cs = window.getComputedStyle(el);
+      var forced =
+        'color:' + cs.getPropertyValue('color') + ' !important;' +
+        'background-color:' + cs.getPropertyValue('background-color') + ' !important;' +
+        'border-top-color:' + cs.getPropertyValue('border-top-color') + ' !important;' +
+        'border-bottom-color:' + cs.getPropertyValue('border-bottom-color') + ' !important;' +
+        'border-left-color:' + cs.getPropertyValue('border-left-color') + ' !important;' +
+        'border-right-color:' + cs.getPropertyValue('border-right-color') + ' !important;' +
+        'opacity:' + cs.getPropertyValue('opacity') + ' !important;';
+      savedData.push({el:el, prev:prev});
+      el.setAttribute('style', (prev ? prev+';' : '') + forced);
+    });
   });
 
-  var now = new Date();
-  var fname = '긴급지원반_임무완료_' +
-    now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
-    pad(now.getHours()) + pad(now.getMinutes());
+  // 헤더 position 고정 해제
+  var headerPosOrig = headerEl ? headerEl.style.position : '';
+  if(headerEl) headerEl.style.position = 'static';
 
-  var html = '<!DOCTYPE html><html><head>' +
-    '<meta charset="UTF-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>' + fname + '</title>' +
-    '<style>' + styles + '</style>' +
-    '<style>' +
-    ':root{' +
-    '--red:#C0392B;--red-dark:#922B21;' +
-    '--orange:#E67E22;--purple:#7D3C98;' +
-    '--green:#1E8449;--blue:#1A5276;' +
-    '--gray:#566573;--gray-light:#F2F3F4;' +
-    '--text:#1a1a1a;--text-muted:#6c757d;' +
-    '--border:rgba(0,0,0,0.1);' +
-    '--shadow:0 2px 12px rgba(0,0,0,0.12);' +
-    '}' +
-    'body{background:#F0F2F5;margin:0;padding:0;font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;}' +
-    '.app-header{position:static !important;}' +
-    '.screen{display:block !important;}' +
-    '@media print{' +
-    '@page{margin:10mm;size:auto;}' +
-    'html,body{height:auto;}' +
-    'body{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}' +
-    '.summary-box{page-break-after:avoid;}' +
-    '.rv-time-inputs{page-break-after:avoid;}' +
-    '.review-card{page-break-inside:avoid;}' +
-    '.review-card.page-break-before{page-break-before:always !important;}' +
-    '}' +
-    '</style>' +
-    '</head><body>' +
-    (headerClone ? headerClone.outerHTML : '') +
-    clone.outerHTML +
-    '<script>' +
-    'window.onload = function(){' +
-    '  window.print();' +
-    '  window.onfocus = function(){ window.close(); };' +
-    '};' +
-    '<\/script>' +
-    '</body></html>';
+  // 헤더 + 결과화면을 감싸는 wrapper
+  var wrapper = document.createElement('div');
+  wrapper.style.cssText = 'background:#F0F2F5;width:' + document.documentElement.clientWidth + 'px;';
+  var insertRef = headerEl || reviewEl;
+  document.body.insertBefore(wrapper, insertRef);
+  if(headerEl) wrapper.appendChild(headerEl);
+  wrapper.appendChild(reviewEl);
 
-  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  var win = window.open(url, '_blank');
-  if(!win){
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = fname + '.html';
-    a.click();
-  }
-  if(loading) loading.textContent = '✅ 새 창에서 저장하세요';
+  var dpr = window.devicePixelRatio || 1;
+
   setTimeout(function(){
-    if(loading) loading.textContent = '';
-    URL.revokeObjectURL(url);
-  }, 8000);
+    html2canvas(wrapper, {
+      scale: dpr * 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#F0F2F5',
+      scrollY: 0,
+      width: wrapper.offsetWidth,
+      height: wrapper.scrollHeight
+    }).then(function(canvas){
+      // 복원
+      if(headerEl){
+        document.body.insertBefore(headerEl, wrapper);
+        headerEl.style.position = headerPosOrig;
+        headerEl.style.display = headerOrigDisplay;
+      }
+      document.body.insertBefore(reviewEl, wrapper);
+      document.body.removeChild(wrapper);
+      savedData.forEach(function(d){
+        if(d.prev) d.el.setAttribute('style', d.prev);
+        else d.el.removeAttribute('style');
+      });
+      btns.forEach(function(b){ b.style.display=''; });
+
+      // PNG 저장
+      var now = new Date();
+      var fname = '긴급지원반_임무완료_' +
+        now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
+        pad(now.getHours()) + pad(now.getMinutes()) + '.png';
+      var link = document.createElement('a');
+      link.download = fname;
+      link.href = canvas.toDataURL('image/png', 1.0);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if(loading) loading.textContent = '✅ 저장 완료!';
+      setTimeout(function(){ if(loading) loading.textContent=''; }, 2000);
+    }).catch(function(){
+      try{
+        if(headerEl){
+          document.body.insertBefore(headerEl, wrapper);
+          headerEl.style.position = headerPosOrig;
+          headerEl.style.display = headerOrigDisplay;
+        }
+        document.body.insertBefore(reviewEl, wrapper);
+        document.body.removeChild(wrapper);
+      }catch(e){}
+      savedData.forEach(function(d){
+        if(d.prev) d.el.setAttribute('style', d.prev);
+        else d.el.removeAttribute('style');
+      });
+      btns.forEach(function(b){ b.style.display=''; });
+      if(loading) loading.textContent = '❌ 캡처 실패. 다시 시도해주세요.';
+    });
+  }, 200);
 }
 </script>
 </head>
@@ -543,7 +562,7 @@ function captureScreen(){
     <div class="action-status" id="action-status">항목을 모두 체크하면 버튼이 활성화됩니다</div>
     <div class="action-btns">
       <button class="btn-complete" id="btn-complete" disabled onclick="completeTask()">임무 완료</button>
-      <button class="btn-review" id="btn-review" disabled onclick="showReview()">완료된<br>임무 확인</button>
+      
     </div>
   </div>
 </div>
@@ -709,6 +728,8 @@ var ROLES = {
 // 초기 첫 화면: 앱 헤더 숨김
 document.addEventListener('DOMContentLoaded', function(){
   document.querySelector('.app-header').style.display = 'none';
+  // 앱 실행 시 localStorage 완전 초기화 (항상 새로 시작)
+  clearSavedState();
 });
 
 // ── 비상소집 상태
@@ -1251,16 +1272,13 @@ function updateProgress(){
   document.getElementById('prog-fill').style.width  = pct + '%';
 
   var bc = document.getElementById('btn-complete');
-  var br = document.getElementById('btn-review');
   var st = document.getElementById('action-status');
 
-  // 활동 종료 OR 현장출동전종료 중 하나라도 있으면 활성화 (전체 완료 불필요)
   var endOk = !!(activityEndTime || earlyEndTime);
   var allDone = (n === totalCount && totalCount > 0);
 
   if(endOk || allDone){
     bc.disabled = false; bc.classList.add('active');
-    br.disabled = false; br.classList.add('active');
     if(allDone){
       st.textContent = '✅ 전체 완료! 임무완료 버튼을 눌러주세요';
     } else {
@@ -1270,7 +1288,6 @@ function updateProgress(){
     bc.textContent = '🎖️ 임무 완료';
   } else {
     bc.disabled = true;  bc.classList.remove('active');
-    br.disabled = true;  br.classList.remove('active');
     st.textContent = '항목을 모두 체크하면 버튼이 활성화됩니다 (' + n + '/' + totalCount + ')';
     st.classList.remove('all-done');
     bc.textContent = '임무 완료';
@@ -1527,99 +1544,112 @@ function sendToSheet(){
 // ── 결과화면 캡처
 function captureScreen(){
   var loading = document.getElementById('capture-loading');
-  if(loading) loading.textContent = '📸 저장 준비 중...';
+  if(loading) loading.textContent = '📸 저장 중...';
 
   var reviewEl = document.getElementById('screen-review');
   var headerEl = document.querySelector('.app-header');
 
-  // 현재 페이지의 모든 스타일 수집
-  var styles = '';
-  var sheets = document.styleSheets;
-  for(var i=0; i<sheets.length; i++){
-    try {
-      var rules = sheets[i].cssRules || sheets[i].rules;
-      for(var j=0; j<rules.length; j++){
-        styles += rules[j].cssText + '\n';
-      }
-    } catch(e){}
-  }
+  // 버튼 숨김
+  var btns = reviewEl.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
+  btns.forEach(function(b){ b.style.display='none'; });
 
-  // 헤더 클론
-  var headerClone = headerEl ? headerEl.cloneNode(true) : null;
+  // 헤더 임시 표시
+  var headerOrigDisplay = headerEl ? headerEl.style.display : '';
+  if(headerEl) headerEl.style.display = 'flex';
 
-  // 결과화면 클론 (버튼 제외)
-  var clone = reviewEl.cloneNode(true);
-  clone.style.display = 'block';
-  var cloneBtns = clone.querySelectorAll('.capture-btn, .print-btn, .capture-loading');
-  cloneBtns.forEach(function(b){ b.style.display='none'; });
+  // ── 캡처할 요소 목록 (헤더 + 결과화면)
+  var targets = headerEl ? [headerEl, reviewEl] : [reviewEl];
 
-  // 현장도착단계 카드에 page-break-before 추가
-  var reviewCards = clone.querySelectorAll('.review-card');
-  reviewCards.forEach(function(card){
-    var h3 = card.querySelector('h3');
-    if(h3 && h3.textContent.indexOf('현장도착단계') !== -1){
-      card.classList.add('page-break-before');
-    }
+  // ── 각 요소의 모든 하위 요소에 계산된 색상 인라인 강제 적용
+  var savedData = [];
+  targets.forEach(function(root){
+    var els = [root].concat(Array.from(root.querySelectorAll('*')));
+    els.forEach(function(el){
+      var prev = el.getAttribute('style') || '';
+      var cs = window.getComputedStyle(el);
+      var forced =
+        'color:' + cs.getPropertyValue('color') + ' !important;' +
+        'background-color:' + cs.getPropertyValue('background-color') + ' !important;' +
+        'border-top-color:' + cs.getPropertyValue('border-top-color') + ' !important;' +
+        'border-bottom-color:' + cs.getPropertyValue('border-bottom-color') + ' !important;' +
+        'border-left-color:' + cs.getPropertyValue('border-left-color') + ' !important;' +
+        'border-right-color:' + cs.getPropertyValue('border-right-color') + ' !important;' +
+        'opacity:' + cs.getPropertyValue('opacity') + ' !important;';
+      savedData.push({el:el, prev:prev});
+      el.setAttribute('style', (prev ? prev+';' : '') + forced);
+    });
   });
 
-  var now = new Date();
-  var fname = '긴급지원반_임무완료_' +
-    now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
-    pad(now.getHours()) + pad(now.getMinutes());
+  // 헤더 position 고정 해제
+  var headerPosOrig = headerEl ? headerEl.style.position : '';
+  if(headerEl) headerEl.style.position = 'static';
 
-  var html = '<!DOCTYPE html><html><head>' +
-    '<meta charset="UTF-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>' + fname + '</title>' +
-    '<style>' + styles + '</style>' +
-    '<style>' +
-    ':root{' +
-    '--red:#C0392B;--red-dark:#922B21;' +
-    '--orange:#E67E22;--purple:#7D3C98;' +
-    '--green:#1E8449;--blue:#1A5276;' +
-    '--gray:#566573;--gray-light:#F2F3F4;' +
-    '--text:#1a1a1a;--text-muted:#6c757d;' +
-    '--border:rgba(0,0,0,0.1);' +
-    '--shadow:0 2px 12px rgba(0,0,0,0.12);' +
-    '}' +
-    'body{background:#F0F2F5;margin:0;padding:0;font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;}' +
-    '.app-header{position:static !important;}' +
-    '.screen{display:block !important;}' +
-    '@media print{' +
-    '@page{margin:10mm;size:auto;}' +
-    'html,body{height:auto;}' +
-    'body{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}' +
-    '.summary-box{page-break-after:avoid;}' +
-    '.rv-time-inputs{page-break-after:avoid;}' +
-    '.review-card{page-break-inside:avoid;}' +
-    '.review-card.page-break-before{page-break-before:always !important;}' +
-    '}' +
-    '</style>' +
-    '</head><body>' +
-    (headerClone ? headerClone.outerHTML : '') +
-    clone.outerHTML +
-    '<script>' +
-    'window.onload = function(){' +
-    '  window.print();' +
-    '  window.onfocus = function(){ window.close(); };' +
-    '};' +
-    '<\/script>' +
-    '</body></html>';
+  // 헤더 + 결과화면을 감싸는 wrapper
+  var wrapper = document.createElement('div');
+  wrapper.style.cssText = 'background:#F0F2F5;width:' + document.documentElement.clientWidth + 'px;';
+  var insertRef = headerEl || reviewEl;
+  document.body.insertBefore(wrapper, insertRef);
+  if(headerEl) wrapper.appendChild(headerEl);
+  wrapper.appendChild(reviewEl);
 
-  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  var win = window.open(url, '_blank');
-  if(!win){
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = fname + '.html';
-    a.click();
-  }
-  if(loading) loading.textContent = '✅ 새 창에서 저장하세요';
+  var dpr = window.devicePixelRatio || 1;
+
   setTimeout(function(){
-    if(loading) loading.textContent = '';
-    URL.revokeObjectURL(url);
-  }, 8000);
+    html2canvas(wrapper, {
+      scale: dpr * 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#F0F2F5',
+      scrollY: 0,
+      width: wrapper.offsetWidth,
+      height: wrapper.scrollHeight
+    }).then(function(canvas){
+      // 복원
+      if(headerEl){
+        document.body.insertBefore(headerEl, wrapper);
+        headerEl.style.position = headerPosOrig;
+        headerEl.style.display = headerOrigDisplay;
+      }
+      document.body.insertBefore(reviewEl, wrapper);
+      document.body.removeChild(wrapper);
+      savedData.forEach(function(d){
+        if(d.prev) d.el.setAttribute('style', d.prev);
+        else d.el.removeAttribute('style');
+      });
+      btns.forEach(function(b){ b.style.display=''; });
+
+      // PNG 저장
+      var now = new Date();
+      var fname = '긴급지원반_임무완료_' +
+        now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' +
+        pad(now.getHours()) + pad(now.getMinutes()) + '.png';
+      var link = document.createElement('a');
+      link.download = fname;
+      link.href = canvas.toDataURL('image/png', 1.0);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if(loading) loading.textContent = '✅ 저장 완료!';
+      setTimeout(function(){ if(loading) loading.textContent=''; }, 2000);
+    }).catch(function(){
+      try{
+        if(headerEl){
+          document.body.insertBefore(headerEl, wrapper);
+          headerEl.style.position = headerPosOrig;
+          headerEl.style.display = headerOrigDisplay;
+        }
+        document.body.insertBefore(reviewEl, wrapper);
+        document.body.removeChild(wrapper);
+      }catch(e){}
+      savedData.forEach(function(d){
+        if(d.prev) d.el.setAttribute('style', d.prev);
+        else d.el.removeAttribute('style');
+      });
+      btns.forEach(function(b){ b.style.display=''; });
+      if(loading) loading.textContent = '❌ 캡처 실패. 다시 시도해주세요.';
+    });
+  }, 200);
 }
 
 // ══════════════════════════════════════════
@@ -1781,6 +1811,36 @@ function restoreChecklist(){
   updateProgress();
 }
 
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('service-worker.js')
+      .then(function(reg){
+        console.log('SW 등록 완료:', reg.scope);
+
+        // 새 버전 감지 시 자동 업데이트
+        reg.addEventListener('updatefound', function(){
+          var newWorker = reg.installing;
+          newWorker.addEventListener('statechange', function(){
+            if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+              // 새 버전 있음 → 즉시 적용
+              newWorker.postMessage('skipWaiting');
+            }
+          });
+        });
+
+        // 주기적으로 업데이트 확인 (5분마다)
+        setInterval(function(){ reg.update(); }, 5 * 60 * 1000);
+      })
+      .catch(function(err){ console.log('SW 등록 실패:', err); });
+
+    // SW 교체 시 페이지 자동 새로고침
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      window.location.reload();
+    });
+  });
+}
 </script>
 </body>
 </html>
